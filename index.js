@@ -1,88 +1,56 @@
+
+/****************************************************************
+* Weather OPA using openweathermap API
+***************************************************************/
+
+//require request package
+const request = require('request');
 const express = require('express')
 const path = require('path')
-const PORT = process.env.PORT || 5000
+var app = express();
 
-express()
-  .use(express.static(path.join(__dirname, 'public')))
-  .set('views', path.join(__dirname, 'views'))
-  .set('view engine', 'ejs')
+//set port
+app.set('port', (process.env.PORT || 5000))
+app.use(express.static(path.join(__dirname, 'public')))
+app.set('views', path.join(__dirname, 'views'))
+app.set('view engine', 'ejs')
+	
+//Have /forecast set up to take user input for city or zip for forecast
+app.get('/forecast', (req, res) => res.render('forecast'))
 
-  .get('/', (req, res) => res.render('pages/form'))
+//API key *****Don't Steal Please :) ***** 
+var apiKey = 'c10aa5c735891861ff883743b62e8fea';
+var city = '';
+var url = '';
 
-  .get('/postage', calculateRate)
+//call /forecastInfo using enter city or zip and return JSON with weather info
+app.get('/forecastInfo', function(req, res) {
+	//get user city or zip
+	city =  req.query.city;
+	//URL for weather API
+	url = `http://api.openweathermap.org/data/2.5/weather?q=${city}&units=imperial&appid=${apiKey}`;
+	getWeather(function(err, data){ 
+    if(err) return res.send(err);       
+    res.send(data);
+  	});
+});
 
-  .listen(PORT, () => console.log(`Listening on ${ PORT }`))
+//Start the server running
+app.listen(app.get('port'), function() {
+	console.log('Node app is running on port', app.get('port'));
+});
 
-  function calculateRate(req, res ) {
-  	var mail = req.query.mail
-  	var weight = req.query.weight
-  	var cost = 0.0
-
-  	if (mail == "Letters (Stamped)") {
-  		if (weight >= 3.5) {
-  			cost = 1.00
-  		} else if (weight >= 3.0) {
-  			cost = .85
-  		} else if (weight >= 2.0) {
-  			cost = .70
+//function to get back JSON string.
+function getWeather(callback) {
+	
+	console.log(city);
+	request(url, function(err, res, body) {
+  		if(!err){
+  			var weather = JSON.parse(body);
+  			result = weather;        
+        	return callback(result, false);   	
   		} else {
-  			cost = .55
+    	return callback(null, err);;
   		}
-  	} else if (mail == "Letters (Metered)") {
-  		if (weight >= 3.5) {
-  			cost = .95
-  		} else if (weight >= 3.0) {
-  			cost = .80
-  		} else if (weight >= 2.0) {
-  			cost = .65
-  		} else {
-  			cost = .50
-  		}
-  	} else if (mail == "Large Envelopes (Flats)") {
-  		if (weight >= 13.0) {
-  			cost = 2.8
-  		} else if (weight >= 12.0) {
-  			cost = 2.65
-  		} else if (weight >= 11.0) {
-  			cost = 2.5
-  		} else if (weight >= 10.0) {
-  			cost = 2.35
-  		} else if (weight >= 9.0) {
-  			cost = 2.2
-  		} else if (weight >= 8.0) {
-  			cost = 2.05
-  		} else if (weight >= 7.0) {
-  			cost = 1.9
-  		} else if (weight >= 6.0) {
-  			cost = 1.75
-  		} else if (weight >= 5.0) {
-  			cost = 1.6
-  		} else if (weight >= 4.0) {
-  			cost = 1.45
-  		} else if (weight >= 3.0) {
-  			cost = 1.3
-  		} else if (weight >= 2.0) {
-  			cost = 1.15
-  		} else {
-  			cost = 1.0
-  		}
-  	} else if (mail == "First-Class Package Service-Retail") {
-  		if (weight >= 13.0) {
-  			cost = 5.71
-  		} else if (weight >= 9.0) {
-  			cost = 5.19
-  		} else if (weight >= 5.0) {
-  			cost = 4.39
-  		} else {
-  			cost = 3.66
-  		}
-  	} else {
-  		cost = 0
-  	}
-
-  	var params = {mail: mail, weight: weight, cost: cost}
-
-  	res.render('pages/postage', params)
-
-  }
-  
+	});
+}
